@@ -72,7 +72,6 @@ public class MainWindow {
         frame.add(panel2, BorderLayout.CENTER);
 
     }
-
     //Login panel action
     public void loginForm(){
             GridBagConstraints gbc = new GridBagConstraints();

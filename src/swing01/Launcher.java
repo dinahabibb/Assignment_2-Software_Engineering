@@ -1,5 +1,4 @@
 package swing01;
-
 import javax.swing.*;
 
 public class Launcher {
