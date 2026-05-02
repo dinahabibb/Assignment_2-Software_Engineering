@@ -161,7 +161,7 @@ public class MainWindow {
             registerPanel.add(new JButton("Reset"), gbc);
 
             gbc.gridx = 1;
-            registerPanel.add(new JButton("Submit"), gbc);
+            registerPanel.add(new JButton("Register"), gbc);
         }
 
 
