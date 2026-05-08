@@ -80,7 +80,8 @@ public class MainWindow {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 10, 5, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+
 
         JLabel title = new JLabel("Login Form");
         title.setFont(new Font("Arial", Font.BOLD, 20));
@@ -155,7 +156,7 @@ public class MainWindow {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 10, 5, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1;
+        gbc.anchor = GridBagConstraints.WEST;
 
         JLabel title = new JLabel("Register Form");
         title.setFont(new Font("Arial", Font.BOLD, 20));
