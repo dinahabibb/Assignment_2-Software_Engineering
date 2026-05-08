@@ -2,17 +2,10 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Alerts Screen - shows budget over-limit alerts and all notifications.
- * Implements US5: Budget Over-Limit Alert
- * Based on Sequence Diagram #5 in SDS
- * Person 3
- */
 public class AlertsScreen extends JPanel {
 
     // Data
@@ -27,8 +20,10 @@ public class AlertsScreen extends JPanel {
     private JLabel unreadCountLabel;
 
     public AlertsScreen() {
-        notifications = DataManager.loadNotifications();
+        notifications = new ArrayList<>();
         budgets = new ArrayList<>();
+        notifications = DataManager.loadNotifications();
+        nextNotifId = DataManager.generateNotificationId(notifications) ;
         initUI();
         loadAndRefreshBudgets();
     }
@@ -38,7 +33,6 @@ public class AlertsScreen extends JPanel {
         setBorder(new EmptyBorder(15, 15, 15, 15));
         setBackground(Color.WHITE);
 
-        // Top bar: title + unread count
         JPanel topBar = new JPanel(new BorderLayout());
         topBar.setBackground(Color.WHITE);
 
@@ -53,8 +47,6 @@ public class AlertsScreen extends JPanel {
         topBar.add(unreadCountLabel, BorderLayout.EAST);
 
         add(topBar, BorderLayout.NORTH);
-
-        // Center: split into budget status (top) + notifications list (bottom)
         JPanel centerPanel = new JPanel(new BorderLayout(0, 10));
         centerPanel.setBackground(Color.WHITE);
 
@@ -63,19 +55,6 @@ public class AlertsScreen extends JPanel {
 
         add(centerPanel, BorderLayout.CENTER);
 
-        // Bottom: mark all as read button
-        JButton markAllBtn = new JButton("Mark All as Read");
-        markAllBtn.setFont(new Font("Arial", Font.PLAIN, 12));
-        markAllBtn.setBackground(new Color(100, 160, 220));
-        markAllBtn.setForeground(Color.WHITE);
-        markAllBtn.setFocusPainted(false);
-        markAllBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        markAllBtn.addActionListener(this::handleMarkAllRead);
-
-        JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        bottomBar.setBackground(Color.WHITE);
-        bottomBar.add(markAllBtn);
-        add(bottomBar, BorderLayout.SOUTH);
     }
 
     // ---------- Budget Status Panel ----------
@@ -122,11 +101,7 @@ public class AlertsScreen extends JPanel {
         return wrapper;
     }
 
-    // ---------- Load budgets from DataManager (Person 2's DataManager) ----------
-    /**
-     * Loads saved budgets from DataManager and refreshes the status panel.
-     * Called on screen open and after returning from BudgetScreen.
-     */
+    // ---------- Load budgets from DataManager --------------
     public void loadAndRefreshBudgets() {
         budgets = DataManager.loadBudgets();
         refreshBudgetStatus();
@@ -134,18 +109,7 @@ public class AlertsScreen extends JPanel {
         updateUnreadCount();
     }
 
-    // ---------- Called from TransactionScreen when expense is added ----------
-    /**
-     * This is the main method called when user adds an expense.
-     * Matches the sequence diagram flow for US5 Budget Over-Limit Alert:
-     * 1. updateSpending(amount) called on Budget
-     * 2. getRemainingAmount() checked
-     * 3. isExceeded() / isNearLimit() evaluated
-     * 4. createNotification() if needed
-     * 5. displayNotification() - UI updated
-     */
     public void checkBudgetAfterExpense(String category, double amount) {
-        // Reload budgets fresh from file
         budgets = DataManager.loadBudgets();
 
         // Find matching budget
@@ -163,43 +127,36 @@ public class AlertsScreen extends JPanel {
         double remaining = matchedBudget.getRemainingAmount();
 
         if (matchedBudget.isExceeded()) {
-            // Budget is exceeded branch from sequence diagram
+            // Budget is exceeded 
             double over = -remaining;
             String msg = "Budget Exceeded — " + category + "! You've exceeded your " +
                     String.format("EGP %.2f", matchedBudget.getLimitAmount()) +
                     " budget by EGP " + String.format("%.2f", over) + ".";
-
-            // createNotification("Budget Exceeded") - from sequence diagram
             notif = createNotification(nextNotifId++, 1, "BUDGET_EXCEEDED", msg);
 
         } else if (matchedBudget.isNearLimit()) {
-            // Budget near limit branch from sequence diagram
             double pct = matchedBudget.getSpendingPercentage();
             String msg = "Budget Alert — " + category + ": You've used " +
                     String.format("%.1f", pct) + "% of your " + category + " budget.";
-
-            // createNotification("Budget near limit") - from sequence diagram
             notif = createNotification(nextNotifId++, 1, "BUDGET_NEAR_LIMIT", msg);
         }
 
         if (notif != null) {
             notifications.add(0, notif); // most recent first
-            // displayNotification() - from sequence diagram
-            DataManager.saveNotifications(notifications); // save to file
+            DataManager.saveNotifications(notifications); 
             displayNotification(notif, matchedBudget);
         }
-
-        // Always refresh budget status
         refreshBudgetStatus();
     }
 
-    // createNotification() from sequence diagram
     private Notification createNotification(int id, int userId, String type, String message) {
         return new Notification(id, userId, type, message);
     }
 
-    // displayNotification() - from sequence diagram - shows popup
     private void displayNotification(Notification notif, Budget budget) {
+        // First update the Notification History panel so it is visible immediately
+        refreshNotifList();
+        updateUnreadCount();
         String title;
         int msgType;
 
@@ -211,9 +168,8 @@ public class AlertsScreen extends JPanel {
             msgType = JOptionPane.INFORMATION_MESSAGE;
         }
 
+        // Show the alert popup after the list has been updated
         JOptionPane.showMessageDialog(this, notif.getMessage(), title, msgType);
-        refreshNotifList();
-        updateUnreadCount();
     }
 
     // ---------- Refresh Budget Status with progress bars ----------
@@ -237,7 +193,7 @@ public class AlertsScreen extends JPanel {
         budgetStatusPanel.repaint();
     }
 
-    // Build a progress bar row for one budget - uses Person 2's Budget API
+    // Build a progress bar row
     private JPanel buildBudgetRow(Budget budget) {
         JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setBackground(Color.WHITE);
@@ -250,8 +206,6 @@ public class AlertsScreen extends JPanel {
         catLabel.setPreferredSize(new Dimension(100, 20));
         row.add(catLabel, BorderLayout.WEST);
 
-        // Progress bar - updateProgressBar from sequence diagram
-        // Use Person 2's getLimitAmount() and getCurrentSpending()
         int pct = 0;
         if (budget.getLimitAmount() > 0) {
             pct = (int) Math.min((budget.getCurrentSpending() / budget.getLimitAmount()) * 100, 100);
@@ -262,7 +216,6 @@ public class AlertsScreen extends JPanel {
         bar.setString(String.format("EGP %.0f / EGP %.0f", budget.getCurrentSpending(), budget.getLimitAmount()));
 
         // Color: red if exceeded, orange if near limit, green if ok
-        // updateProgressBar("red") / updateProgressBar("orange") from sequence diagram
         if (budget.isExceeded()) {
             bar.setForeground(new Color(244, 67, 54)); // red
         } else if (budget.isNearLimit()) {
@@ -307,11 +260,10 @@ public class AlertsScreen extends JPanel {
         notifListPanel.repaint();
     }
 
-    // Build one notification card
     private JPanel buildNotifCard(Notification notif) {
         JPanel card = new JPanel(new BorderLayout(8, 0));
 
-        // Unread = slightly blue background, read = light gray
+        // Unread = blue background, read = light gray
         if (!notif.isRead()) {
             card.setBackground(new Color(232, 244, 253));
         } else {
@@ -357,32 +309,28 @@ public class AlertsScreen extends JPanel {
 
         card.add(center, BorderLayout.CENTER);
 
-        // Mark as read button (only if unread)
+        // OK button and closes the notification window
         if (!notif.isRead()) {
-            JButton readBtn = new JButton("Read");
-            readBtn.setToolTipText("Mark as read");
+            JButton readBtn = new JButton("OK");
+            readBtn.setToolTipText("Mark as read and close");
             readBtn.setFont(new Font("Arial", Font.PLAIN, 11));
             readBtn.setFocusPainted(false);
             readBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             readBtn.addActionListener(e -> {
-                notif.markAsRead(); // markAsRead():void from sequence diagram
+                notif.markAsRead(); 
+                DataManager.saveNotifications(notifications); 
                 refreshNotifList();
                 updateUnreadCount();
+                // Close the parent Window (
+                Window parentWindow = SwingUtilities.getWindowAncestor(AlertsScreen.this);
+                if (parentWindow != null) {
+                    parentWindow.dispose();
+                }
             });
             card.add(readBtn, BorderLayout.EAST);
         }
 
         return card;
-    }
-
-    // ---------- Mark all as read ----------
-    private void handleMarkAllRead(ActionEvent e) {
-        for (Notification n : notifications) {
-            n.markAsRead();
-            DataManager.saveNotifications(notifications);
-        }
-        refreshNotifList();
-        updateUnreadCount();
     }
 
     private void updateUnreadCount() {
