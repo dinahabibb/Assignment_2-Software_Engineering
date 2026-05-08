@@ -1,19 +1,19 @@
-package UI;
+package ui;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
-import Model.Budget;
-import Model.Category;
-import Model.DataManager;
-import Model.Expense;
-import Model.Income;
-import Model.Notification;
-import Model.Transaction;
+import model.Budget;
+import model.Category;
+import model.DataManager;
+import model.Expense;
+import model.Income;
+import model.Notification;
+import model.Transaction;
 
 import java.awt.*;
 import java.util.List;
 
-public class TransactionScreen extends JFrame {
+public class TransactionScreen extends JPanel  {
 
     private JTextField amountField;
     private JTextField dateField;
@@ -28,18 +28,19 @@ public class TransactionScreen extends JFrame {
     private JButton deleteButton;
     private JTable transactionTable;
     private DefaultTableModel tableModel;
-    private List<Transaction> transactions;
     private int selectedTransactionIndex = -1;
 
-    public TransactionScreen() {
-        transactions = DataManager.loadTransactions();
-        setTitle("Transaction Screen");
-        setSize(850, 650);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
+    private MainFrame mainFrame;
+
+    public List<Transaction> transactions;
+    
+
+    public TransactionScreen(MainFrame mainFrame) {
+        this.mainFrame = mainFrame;
+        transactions = DataManager.loadTransactions(mainFrame.getCurrentUserEmail());
+        setLayout(new BorderLayout(10, 10));
         buildScreen();
         refreshTable();
-        setVisible(true);
     }
 
     private void buildScreen() {
@@ -49,69 +50,8 @@ public class TransactionScreen extends JFrame {
         mainPanel.add(buildFormPanel(), BorderLayout.CENTER);
         mainPanel.add(buildButtonPanel(), BorderLayout.SOUTH);
 
-        JPanel fullPanel = new JPanel(new BorderLayout(10, 10));
-        fullPanel.add(buildNavBar(), BorderLayout.NORTH);
-        fullPanel.add(mainPanel, BorderLayout.CENTER);
-        fullPanel.add(buildTablePanel(), BorderLayout.SOUTH);
-        add(fullPanel);
-    }
-
-    // Navigation bar linking all 4 screens (Person 3 integration)
-    private JPanel buildNavBar() {
-        JPanel nav = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        nav.setBackground(new Color(230, 240, 255));
-        nav.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
-
-        JLabel appLabel = new JLabel("  BudgetApp: ");
-        appLabel.setFont(new Font("Arial", Font.BOLD, 12));
-        nav.add(appLabel);
-
-        JButton btnTransactions = new JButton("Transactions");
-        btnTransactions.setBackground(new Color(0, 120, 215));
-        btnTransactions.setForeground(Color.WHITE);
-        btnTransactions.setFocusPainted(false);
-        btnTransactions.setEnabled(false); 
-        nav.add(btnTransactions);
-
-        JButton btnBudget = new JButton("Budgets");
-        btnBudget.setFocusPainted(false);
-        btnBudget.addActionListener(e -> {
-            new BudgetScreen();
-            dispose();
-        });
-        nav.add(btnBudget);
-
-        JButton btnAlerts = new JButton("Alerts");
-        btnAlerts.setFocusPainted(false);
-        btnAlerts.addActionListener(e -> openAlertsWindow());
-        nav.add(btnAlerts);
-
-        JButton btnGoals = new JButton("Goals");
-        btnGoals.setFocusPainted(false);
-        btnGoals.addActionListener(e -> openGoalsWindow());
-        nav.add(btnGoals);
-
-        return nav;
-    }
-
-    private void openAlertsWindow() {
-        JFrame frame = new JFrame("Alerts & Notifications");
-        frame.setSize(700, 550);
-        frame.setLocationRelativeTo(null);
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        AlertsScreen alertsScreen = new AlertsScreen();
-        frame.add(alertsScreen);
-        frame.setVisible(true);
-    }
-
-    private void openGoalsWindow() {
-        JFrame frame = new JFrame("Financial Goals");
-        frame.setSize(800, 550);
-        frame.setLocationRelativeTo(null);
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        GoalScreen goalScreen = new GoalScreen();
-        frame.add(goalScreen);
-        frame.setVisible(true);
+        add(mainPanel, BorderLayout.CENTER);
+        add(buildTablePanel(), BorderLayout.SOUTH);    
     }
 
     private JPanel buildTitlePanel() {
@@ -251,6 +191,7 @@ public class TransactionScreen extends JFrame {
         updateSourceNotesLabel();
     }
 
+
     private void saveTransaction() {
         String type = (String) typeComboBox.getSelectedItem();
         String amountText = amountField.getText().trim();
@@ -295,10 +236,10 @@ public class TransactionScreen extends JFrame {
             Transaction updated;
             if (type.equals("Income")) {
                 updated = new Income(keepId, amount, date,
-                        description, category, type, paymentMethod, sourceNotes);
+                        description, category, type, paymentMethod, sourceNotes, mainFrame.getCurrentUserEmail());
             } else {
                 updated = new Expense(keepId, amount, date,
-                        description, category, type, paymentMethod, sourceNotes);
+                        description, category, type, paymentMethod, sourceNotes, mainFrame.getCurrentUserEmail());
             }
 
             transactions.set(selectedTransactionIndex, updated);
@@ -313,11 +254,13 @@ public class TransactionScreen extends JFrame {
             Transaction transaction;
             if (type.equals("Income")) {
                 transaction = new Income(newId, amount, date,
-                        description, category, type, paymentMethod, sourceNotes);
+                        description, category, type, paymentMethod, sourceNotes,mainFrame.getCurrentUserEmail());
             } else {
                 transaction = new Expense(newId, amount, date,
-                        description, category, type, paymentMethod, sourceNotes);
+                        description, category, type, paymentMethod, sourceNotes,mainFrame.getCurrentUserEmail());
             }
+
+            transaction.setUserEmail(mainFrame.getCurrentUserEmail());
 
             transactions.add(transaction);
 
@@ -328,8 +271,12 @@ public class TransactionScreen extends JFrame {
 
         DataManager.saveTransactions(transactions);
         updateBudgetsAfterTransaction();
+        Transaction.allTransactions = new java.util.ArrayList<>(transactions);
         refreshTable();
         clearForm();
+        if (mainFrame != null) {
+            mainFrame.refreshScreens();        
+        }
     }
 
     private void deleteTransaction() {
@@ -347,10 +294,15 @@ public class TransactionScreen extends JFrame {
         if (confirm == JOptionPane.YES_OPTION) {
             transactions.remove(selectedTransactionIndex);
             DataManager.saveTransactions(transactions);
+            Transaction.allTransactions = new java.util.ArrayList<>(transactions);
             updateBudgetsAfterTransaction();
             refreshTable();
             clearForm();
+            if (mainFrame != null) {
+                mainFrame.refreshScreens();
+            }
             selectedTransactionIndex = -1;
+            
         }
     }
 
@@ -414,7 +366,8 @@ public class TransactionScreen extends JFrame {
         }
     }
 
-    private void refreshTable() {
+    public  void refreshTable() {
+        // transactions = DataManager.loadTransactions();
         tableModel.setRowCount(0);
         for (Transaction t : transactions) {
             String sourceNotes = "";
@@ -456,7 +409,4 @@ public class TransactionScreen extends JFrame {
         return today.toString();
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new TransactionScreen());
-    }
 }
