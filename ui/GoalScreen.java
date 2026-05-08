@@ -1,9 +1,9 @@
-package UI;
+package ui;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 
-import Model.Goal;
+import model.Goal;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
